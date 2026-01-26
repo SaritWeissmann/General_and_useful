@@ -1,6 +1,6 @@
 ---
 title: "Using GitHub from my WSL Ubuntu"
-format: bash
+format: html
 ---
 
 ---
