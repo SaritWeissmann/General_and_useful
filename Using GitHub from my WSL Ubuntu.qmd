@@ -3,11 +3,8 @@ title: "Using GitHub from my WSL Ubuntu"
 format: html
 ---
 
----
-First install GitHub on your WSL Ubuntu:
----
-
-```{bash}
+```{shellscript}
+#First, install GitHub on your WSL Ubuntu
 # Updating the package list   
 sudo apt update
 
