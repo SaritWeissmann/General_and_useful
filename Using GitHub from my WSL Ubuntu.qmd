@@ -1,0 +1,25 @@
+---
+title: "Using GitHub from my WSL Ubuntu"
+format: bash
+---
+
+---
+First install GitHub on your WSL Ubuntu:
+---
+
+```{bash}
+# Updating the package list   
+sudo apt update
+
+# Installing Git
+sudo apt install git -y
+
+# Verifying the installation
+git --version
+
+# Configure the basic Git on Ubuntu
+git config --global user.name "Your Name"
+git config --global user.email "your_email@example.com"
+git config --list
+```
+
