@@ -1,0 +1,123 @@
+---
+title: "Useful code snippets"
+format: html
+---
+
+## Changing file extention to all files in your directory
+
+```{bash}
+#!/bin/bash
+
+set -euo pipefail
+
+for f in ./*.oldext; do
+    mv -- "$f" "${f%.oldext}.newext"
+done
+```
+
+## Changing file names in a directory
+1. In this case, the files don't need to have common extentions or any other similarities. 
+2. You can also change names to only a subset of the files; only the file names in your list will change
+
+```{bash}
+#!/bin/bash
+set -euo pipefail
+
+# These name list files should have one file name per line, and must be of EXACTLY the same lenght
+OLDLIST=oldname.txt 
+NEWLIST=newname.txt
+
+DIR=/<path_to_directory_with_files_and_file_lists>/
+
+# Read files into arrays
+mapfile -t oldnames < "$OLDLIST"
+mapfile -t newnames < "$NEWLIST"
+
+# Double check both lists have the same No. of files
+if [ "${#oldnames[@]}" -ne "${#newnames[@]}" ]; then
+    echo "ERROR: oldname.txt and newname.txt have different lengths!" >&2
+    exit 1
+fi
+
+# Rename loop
+for i in "${!oldnames[@]}"; do
+    old="${oldnames[$i]}"
+    new="${newnames[$i]}"
+
+    echo "Renaming: $old -> $new"
+
+    mv -- "$DIR/$old" "$DIR/$new"
+done
+
+echo "All files renamed successfully."
+```
+
+## If you just need a quantification of the raw reads, for eaxmple for tximport/DESeq2, you can generate them as .sf quant files using Salmon directly from the fastq files 
+
+```{bash}
+#!/bin/bash
+set -euo pipefail
+
+# Install Salmon
+SALMONDIR=/path_to_where_you_want_salmon_to_live
+SALMON=$SALMONDIR/bin/salmon
+
+if [ ! -x "$SALMON" ]; then
+    echo "Installing Salmon..."
+    mkdir -p "$SALMONDIR"
+    cd "$SALMONDIR"
+    wget https://github.com/COMBINE-lab/salmon/releases/download/v1.10.1/salmon-1.10.1_linux_x86_64.tar.gz
+    tar -xzf salmon-1.10.1_linux_x86_64.tar.gz
+    mv salmon-1.10.1_linux_x86_64/* .
+    rm salmon-1.10.1_linux_x86_64.tar.gz
+fi
+
+# Paths
+TRANSCRIPTS=/home/sweissmann/usr/IndxGenome/Sbicolor_sl12_transcripts.fa
+INDEXDIR=/home/sweissmann/usr/IndxGenome/Salmon_index/Sbicolor_sl12
+
+DATADIR=/path_to/fastq_files
+OUTDIR=/path_to/results_directory
+
+SAMPLES=/path_to/file_names.txt
+
+THREADS=8
+
+mkdir -p "$OUTDIR"
+
+# Build index for your species
+if [ ! -d "$INDEXDIR" ]; then
+    echo "Building Salmon index..."
+    $SALMON index \
+        -t "$TRANSCRIPTS" \
+        -i "$INDEXDIR" \
+        -p "$THREADS"
+else
+    echo "Salmon index exists."
+fi
+
+# Generate the .sf quant files
+while read -r a; do
+
+    echo "Processing $a"
+
+    $SALMON quant \
+        -i "$INDEXDIR" \
+        -l A \
+        -1 "$DATADIR/${a}_results/${a}_L001_R1_001.fastq.gz" \
+        -2 "$DATADIR/${a}_results/${a}_L001_R2_001.fastq.gz" \
+        -p "$THREADS" \
+        -o "$OUTDIR/${a}_quant" \
+        > "$OUTDIR/${a}_salmon.log" 2>&1
+
+done < "$SAMPLES"
+
+echo "Your .sf files are ready"
+```
+
+
+
+
+
+
+
