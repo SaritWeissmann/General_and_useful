@@ -1,0 +1,95 @@
+---
+title: "Accessing AWS from WSL Ubuntu"
+format: html
+author: Sarit Weissmann
+---
+
+# Install AWS CLI v2 on your WSL Ubuntu
+```{bash}
+cd ~
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+sudo apt update
+sudo apt install -y unzip
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify installation
+aws --version
+
+# Configure AWS credentials
+aws configure
+
+# Test S3 access
+aws s3 ls
+
+# Create an S3 bucket for the analysis (with directories)
+aws s3 mb s3://bucket_name
+aws s3api put-object --bucket bucket_name --key directory_name/
+aws s3api put-object --bucket bucket_name --key directory_name/results/
+aws s3api put-object --bucket bucket_name --key directory_name/genomes/
+aws s3api put-object --bucket bucket_name --key directory_name/fastq/
+
+# From the appropriate directory, upload fastq files to AWS
+aws s3 sync . s3://bucket_name/directory_name/fastq/ \
+  --exclude "*" \
+  --include "*.fastq"
+
+# Upload genome files: .fa softmask genome and .gff3 gene_exons annotation files
+aws s3 cp Zmays_493_APGv4.softmasked.fa \
+  s3://bucket_name/Zm/genome/
+
+aws s3 cp Zmays_493_RefGen_V4.gene_exons.gff3 \
+  s3://bucket_name/Zm/genome/
+```
+
+## Before statring to use the EC2 instance for the first time (in this case for RNA-seq analysis), you need to install some basic software.
+
+```{bash}
+# Update system and install build essentials 
+sudo apt update
+sudo apt install -y build-essential zlib1g-dev
+sudo apt install -y g++ libomp-dev   # OpenMP support → much faster on multi-core EC2
+
+# Some basic software
+echo "=== Installing dependencies ==="
+
+sudo dnf update -y -q
+sudo dnf install -y -q \
+    gcc gcc-c++ make \
+    zlib-devel bzip2-devel xz-devel ncurses-devel \
+    libcurl-devel openssl-devel \
+    wget tar unzip which git
+
+echo "Installing htslib & samtools..."
+HTSLIB_VERSION="1.23"
+SAMTOOLS_VERSION="1.23"
+
+wget -q "https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2"
+tar -xjf "htslib-${HTSLIB_VERSION}.tar.bz2"
+cd "htslib-${HTSLIB_VERSION}"
+./configure --prefix=/usr/local
+make -j${THREADS}
+sudo make install
+cd ..
+
+wget -q "https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2"
+tar -xjf "samtools-${SAMTOOLS_VERSION}.tar.bz2"
+cd "samtools-${SAMTOOLS_VERSION}"
+./configure --prefix=/usr/local
+make -j${THREADS}
+sudo make install
+cd ..
+
+# Install STAR (or any aligner you prefer)
+git clone https://github.com/alexdobin/STAR.git
+cd STAR/source
+make -j$(nproc)
+mkdir -p ~/bin
+cp STAR ~/bin/
+
+# Add to your $PATH
+export PATH="$HOME/bin:$PATH"
+
+# Verify installation
+STAR --version || echo "STAR not found in PATH"
+```
